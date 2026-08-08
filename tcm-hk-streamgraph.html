@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TCM Exports to Hong Kong (1953–1963)</title>
+<style>
+  :root {
+    --surface: #fcfcfb;
+    --surface-alt: #f5f4f1;
+    --text: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --s1: #2a78d6;
+    --s2: #eb6834;
+    --s3: #1baf7a;
+    --s4: #eda100;
+    --s5: #e87ba4;
+    --s6: #008300;
+    --s7: #4a3aa7;
+    --sparse: #787570;
+    --sparse-fill: #b8b5ad;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: #f9f9f7; color: var(--text);
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  .container {
+    max-width: 1100px; width: 100%; padding: 32px 24px 48px;
+  }
+
+  header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 8px; flex-wrap: wrap; gap: 16px;
+  }
+  h1 { font-size: 22px; font-weight: 700; color: var(--text); }
+  .subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+  .controls {
+    display: flex; gap: 4px; background: var(--surface);
+    border: 1px solid var(--grid); border-radius: 8px; padding: 3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .controls button {
+    padding: 7px 16px; border: none; background: transparent;
+    font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    border-radius: 6px; cursor: pointer; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .controls button.active {
+    background: var(--text); color: #fff;
+  }
+  .controls button:hover:not(.active) {
+    background: var(--grid);
+  }
+
+  /* Chart sections */
+  .chart-section {
+    background: var(--surface); border: 1px solid var(--grid);
+    border-radius: 12px; padding: 20px 24px 16px;
+    margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  }
+  .chart-section h2 {
+    font-size: 14px; font-weight: 700; color: var(--text);
+    margin-bottom: 8px;
+  }
+  .chart-section .desc {
+    font-size: 12px; color: var(--text-muted); margin-bottom: 12px;
+  }
+
+  .streamgraph-wrap { position: relative; }
+  .streamgraph-wrap svg { display: block; width: 100%; }
+  .dot-timeline-wrap svg { display: block; width: 100%; }
+
+  /* Legend */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 4px 18px;
+    margin-top: 12px; font-size: 12px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 6px; color: var(--text-secondary);
+  }
+  .legend-swatch {
+    width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;
+  }
+  .legend-divider {
+    width: 1px; height: 14px; background: var(--grid); margin: 0 8px; align-self: center;
+  }
+  .legend-item.sparse .legend-swatch {
+    border-radius: 50%; width: 8px; height: 8px;
+  }
+
+  /* Tooltip */
+  .tooltip {
+    position: absolute; pointer-events: none; opacity: 0;
+    background: var(--text); color: #fff; padding: 8px 12px;
+    border-radius: 6px; font-size: 12px; line-height: 1.5;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18); z-index: 100;
+    transition: opacity 0.12s; max-width: 240px;
+  }
+  .tooltip .tt-year { font-weight: 700; margin-bottom: 2px; color: rgba(255,255,255,0.7); }
+  .tooltip .tt-item { display: flex; justify-content: space-between; gap: 16px; }
+  .tooltip .tt-name { white-space: nowrap; }
+  .tooltip .tt-val { font-weight: 600; white-space: nowrap; }
+  .tooltip .tt-unit { font-size: 10px; color: rgba(255,255,255,0.55); margin-left: 2px; }
+
+  .note {
+    font-size: 11px; color: var(--text-muted); margin-top: 16px;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 700px) {
+    .container { padding: 16px 12px 32px; }
+    header { flex-direction: column; }
+    .chart-section { padding: 12px 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div>
+    <h1>TCM Animal Products Exported to Hong Kong</h1>
+    <div class="subtitle">Traditional Chinese Medicine · 1953–1963 · All values converted to kg</div>
+  </div>
+  <div class="controls">
+    <button id="btn-absolute" class="active">Absolute (kg)</button>
+    <button id="btn-percent">% of Year</button>
+  </div>
+</header>
+
+<div class="chart-section">
+  <h2>Major Products — Streamgraph</h2>
+  <div class="desc">7 products with ≥ 6 years of trade data. Missing years are shown as gaps.</div>
+  <div class="streamgraph-wrap" id="streamgraph-wrap">
+    <svg id="streamgraph"></svg>
+    <div class="tooltip" id="sg-tooltip"></div>
+  </div>
+  <div class="legend" id="streamgraph-legend"></div>
+</div>
+
+<div class="chart-section">
+  <h2>Sporadic Exports — Dot Timeline</h2>
+  <div class="desc">6 products with only 1–4 years of recorded trade. Dot size = quantity in kg.</div>
+  <div class="dot-timeline-wrap" id="dots-wrap">
+    <svg id="dots-chart"></svg>
+    <div class="tooltip" id="dot-tooltip"></div>
+  </div>
+  <div class="legend" id="dots-legend"></div>
+</div>
+
+<div class="note">
+  <strong>Unit conversions:</strong> 1 tael (两) = 0.0378 kg &nbsp;|&nbsp; 1 ton (吨) = 1,000 kg.<br>
+  <strong>Data source:</strong> Export records to Hong Kong, 1953–1963. Products with units: Musk &amp; Deer Antler Velvet in taels; Dragon Bone, Donkey-hide Gelatin &amp; Goat Blood in tons; all others in kg.
+</div>
+
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+// ── DATA ──────────────────────────────────────────
+const YEARS = d3.range(1953, 1964);
+
+// Conversion: 1 tael = 0.0378 kg, 1 ton = 1000 kg
+const CONV = { tael: 0.0378, kg: 1, ton: 1000 };
+
+// Major products for streamgraph (raw values in original units)
+const MAJOR_RAW = [
+  { product: "Musk",                unit: "tael", conv: CONV.tael,
+    data: {1953:0, 1954:960, 1955:1824, 1956:8037, 1957:2637, 1958:0, 1959:0, 1960:0, 1961:2080, 1962:640, 1963:2400} },
+  { product: "Deer Antler Velvet",  unit: "tael", conv: CONV.tael,
+    data: {1953:10303, 1954:11232, 1955:9408, 1956:1248, 1957:8128, 1958:16864, 1959:11904, 1960:603, 1961:0, 1962:0, 1963:0} },
+  { product: "Deer Antler Horn",    unit: "kg",   conv: CONV.kg,
+    data: {1953:0, 1954:5700, 1955:1789, 1956:2250, 1957:3282, 1958:10759, 1959:1100, 1960:6102, 1961:8950, 1962:8427, 1963:2699} },
+  { product: "Deer Tail",           unit: "kg",   conv: CONV.kg,
+    data: {1953:122, 1954:33, 1955:96, 1956:53, 1957:61, 1958:123, 1959:83, 1960:27, 1961:5, 1962:11, 1963:51} },
+  { product: "Deer Sinew",          unit: "kg",   conv: CONV.kg,
+    data: {1953:16, 1954:340, 1955:194, 1956:821, 1957:876, 1958:1213, 1959:1765, 1960:885, 1961:381, 1962:100, 1963:0} },
+  { product: "Dragon Bone",         unit: "ton",  conv: CONV.ton,
+    data: {1953:3, 1954:0, 1955:24, 1956:13, 1957:14, 1958:7, 1959:10, 1960:18, 1961:13, 1962:4, 1963:3} },
+  { product: "Donkey-hide Gelatin", unit: "ton",  conv: CONV.ton,
+    data: {1953:0, 1954:0, 1955:4, 1956:3, 1957:4, 1958:2, 1959:3, 1960:8, 1961:4, 1962:0, 1963:0} },
+];
+
+// Convert to kg
+const MAJOR = MAJOR_RAW.map(d => ({
+  product: d.product,
+  unit: d.unit,
+  orig: d.data,
+  values: YEARS.map(y => (d.data[y] || 0) * d.conv),
+}));
+
+// Sparse products (raw + converted to kg points)
+const SPARSE_RAW = [
+  { product: "Antelope Horn",   unit: "kg",  conv: CONV.kg,   pts: [{y:1958,v:1021},{y:1959,v:587},{y:1960,v:87},{y:1962,v:1}] },
+  { product: "Antelope Bone",   unit: "kg",  conv: CONV.kg,   pts: [{y:1957,v:27},{y:1958,v:25}] },
+  { product: "Bear Paw",        unit: "kg",  conv: CONV.kg,   pts: [{y:1956,v:27}] },
+  { product: "Musk Skin",       unit: "kg",  conv: CONV.kg,   pts: [{y:1957,v:13}] },
+  { product: "Goat Blood",      unit: "ton", conv: CONV.ton,  pts: [{y:1956,v:0.03}] },
+  { product: "Deer Penis",      unit: "kg",  conv: CONV.kg,   pts: [{y:1955,v:33}] },
+];
+const SPARSE = SPARSE_RAW.map(d => ({
+  product: d.product,
+  unit: d.unit,
+  pts: d.pts.map(p => ({ year: p.y, kg: p.v * d.conv, orig: p.v })),
+}));
+
+// ── COLORS ────────────────────────────────────────
+const COLORS = ["#2a78d6","#eb6834","#1baf7a","#eda100","#e87ba4","#008300","#4a3aa7"];
+const SPARSE_COLOR = "#787570";
+
+// ── STREAMGRAPH ───────────────────────────────────
+let mode = "absolute"; // "absolute" | "percent"
+
+function buildStreamgraph() {
+  const wrap = document.getElementById("streamgraph-wrap");
+  const svgEl = document.getElementById("streamgraph");
+  const legendEl = document.getElementById("streamgraph-legend");
+
+  // Dimensions
+  const width = wrap.clientWidth;
+  const height = 420;
+  const margin = { top: 20, right: 20, bottom: 32, left: 20 };
+  const innerW = width - margin.left - margin.right;
+  const innerH = height - margin.top - margin.bottom;
+
+  svgEl.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svgEl.innerHTML = "";
+
+  const svg = d3.select(svgEl)
+    .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+  // Scales
+  const x = d3.scaleLinear().domain([1953, 1963]).range([0, innerW]);
+  const y = d3.scaleLinear().range([innerH, 0]);
+
+  // Stack
+  const stackData = YEARS.map((yr, i) => {
+    const row = { year: yr };
+    MAJOR.forEach(d => { row[d.product] = d.values[i]; });
+    return row;
+  });
+
+  const keys = MAJOR.map(d => d.product);
+  const stack = d3.stack().keys(keys);
+  if (mode === "percent") stack.offset(d3.stackOffsetExpand);
+  else stack.offset(d3.stackOffsetSilhouette);
+
+  const series = stack(stackData);
+
+  // Y domain
+  if (mode === "percent") {
+    y.domain([0, 1]);
+  } else {
+    let yMin = 0, yMax = 0;
+    series.forEach(s => {
+      s.forEach(d => {
+        yMin = Math.min(yMin, d[0]);
+        yMax = Math.max(yMax, d[1]);
+      });
+    });
+    y.domain([yMin, yMax]);
+  }
+
+  // Area
+  const area = d3.area()
+    .x(d => x(d.data.year))
+    .y0(d => y(d[0]))
+    .y1(d => y(d[1]))
+    .curve(d3.curveMonotoneX);
+
+  svg.selectAll("path")
+    .data(series)
+    .join("path")
+    .attr("fill", (d, i) => COLORS[i])
+    .attr("fill-opacity", 0.88)
+    .attr("d", area);
+
+  // Axes
+  const xAxis = d3.axisBottom(x).tickFormat(d3.format("d")).ticks(11);
+  svg.append("g")
+    .attr("transform", `translate(0,${innerH})`)
+    .call(xAxis)
+    .call(g => g.select(".domain").attr("stroke", "#c3c2b7"))
+    .call(g => g.selectAll(".tick line").attr("stroke", "#e1e0d9"))
+    .call(g => g.selectAll(".tick text").attr("fill", "#898781").attr("font-size", 11));
+
+  // Y axis only in absolute mode
+  if (mode === "absolute") {
+    const yAxis = d3.axisRight(y).ticks(5).tickFormat(d => d >= 1000 ? (d/1000).toFixed(1) + "k" : d);
+    svg.append("g")
+      .attr("transform", `translate(${innerW},0)`)
+      .call(yAxis)
+      .call(g => g.select(".domain").remove())
+      .call(g => g.selectAll(".tick line").attr("stroke", "#e1e0d9").attr("x2", -innerW))
+      .call(g => g.selectAll(".tick text").attr("fill", "#898781").attr("font-size", 10).attr("dx", 4));
+  } else {
+    // Percentage labels
+    const pctAxis = d3.axisRight(y).ticks(4).tickFormat(d => Math.round(d * 100) + "%");
+    svg.append("g")
+      .attr("transform", `translate(${innerW},0)`)
+      .call(pctAxis)
+      .call(g => g.select(".domain").remove())
+      .call(g => g.selectAll(".tick line").attr("stroke", "#e1e0d9").attr("x2", -innerW))
+      .call(g => g.selectAll(".tick text").attr("fill", "#898781").attr("font-size", 10).attr("dx", 4));
+  }
+
+  // Hover
+  const tooltip = d3.select("#sg-tooltip");
+
+  // Invisible hover bars
+  const barW = innerW / 11;
+  svg.selectAll("rect.hover-bar")
+    .data(YEARS)
+    .join("rect")
+    .attr("class", "hover-bar")
+    .attr("x", d => x(d) - barW / 2)
+    .attr("y", 0).attr("width", barW).attr("height", innerH)
+    .attr("fill", "transparent")
+    .on("mouseenter", function(ev, yr) {
+      const vals = MAJOR.map(d => {
+        const kg = d.values[yr - 1953];
+        const orig = d.orig[yr];
+        return { product: d.product, kg, orig, unit: d.unit };
+      }).filter(v => v.kg > 0)
+        .sort((a, b) => b.kg - a.kg);
+
+      let html = `<div class="tt-year">${yr}</div>`;
+      vals.forEach(v => {
+        html += `<div class="tt-item"><span class="tt-name">${v.product}</span><span class="tt-val">${v.kg.toLocaleString(undefined,{maximumFractionDigits:1})}<span class="tt-unit">kg</span></span></div>`;
+      });
+      if (vals.length === 0) html += `<div style="color:rgba(255,255,255,0.5)">No exports recorded</div>`;
+      else {
+        const total = vals.reduce((s,v) => s + v.kg, 0);
+        html += `<div class="tt-item" style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.15);padding-top:4px;"><span class="tt-name">Total</span><span class="tt-val">${total.toLocaleString(undefined,{maximumFractionDigits:1})}<span class="tt-unit">kg</span></span></div>`;
+      }
+
+      tooltip.style("opacity", 1).html(html);
+      positionTooltip(ev, tooltip);
+    })
+    .on("mousemove", function(ev) { positionTooltip(ev, tooltip); })
+    .on("mouseleave", function() { tooltip.style("opacity", 0); });
+
+  // Legend
+  legendEl.innerHTML = "";
+  MAJOR.forEach((d, i) => {
+    const item = document.createElement("span");
+    item.className = "legend-item";
+    item.innerHTML = `<span class="legend-swatch" style="background:${COLORS[i]}"></span>${d.product}`;
+    legendEl.appendChild(item);
+  });
+}
+
+// ── DOT TIMELINE ──────────────────────────────────
+function buildDots() {
+  const wrap = document.getElementById("dots-wrap");
+  const svgEl = document.getElementById("dots-chart");
+  const legendEl = document.getElementById("dots-legend");
+
+  const width = wrap.clientWidth;
+  const rowH = 34;
+  const margin = { top: 12, right: 20, bottom: 32, left: 150 };
+  const innerW = width - margin.left - margin.right;
+  const height = margin.top + SPARSE.length * rowH + margin.bottom;
+
+  svgEl.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svgEl.innerHTML = "";
+
+  const svg = d3.select(svgEl)
+    .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+  const x = d3.scaleLinear().domain([1953, 1963]).range([0, innerW]);
+
+  // Radius scale (same for all sparse products, based on kg)
+  const allVals = SPARSE.flatMap(d => d.pts.map(p => p.kg));
+  const r = d3.scaleSqrt().domain([0, d3.max(allVals) || 1]).range([3, 14]);
+
+  // Row lines
+  SPARSE.forEach((d, i) => {
+    const cy = i * rowH + rowH / 2;
+
+    // Faint baseline
+    svg.append("line")
+      .attr("x1", 0).attr("x2", innerW)
+      .attr("y1", cy).attr("y2", cy)
+      .attr("stroke", "#e1e0d9").attr("stroke-width", 1);
+
+    // Label
+    svg.append("text")
+      .attr("x", -8).attr("y", cy)
+      .attr("text-anchor", "end").attr("dominant-baseline", "central")
+      .attr("fill", "#52514e").attr("font-size", 12)
+      .text(d.product);
+
+    // Unit label
+    svg.append("text")
+      .attr("x", -8).attr("y", cy + 13)
+      .attr("text-anchor", "end").attr("dominant-baseline", "central")
+      .attr("fill", "#898781").attr("font-size", 10)
+      .text(d.pts.length > 0 && d.unit ? `(${d.unit})` : "");
+
+    // Dots
+    const g = svg.append("g");
+    d.pts.forEach(pt => {
+      g.append("circle")
+        .attr("cx", x(pt.year)).attr("cy", cy)
+        .attr("r", r(pt.kg))
+        .attr("fill", SPARSE_COLOR)
+        .attr("fill-opacity", 0.75)
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 1.5);
+
+      // Direct label for larger dots
+      if (pt.kg > 10) {
+        g.append("text")
+          .attr("x", x(pt.year)).attr("y", cy - r(pt.kg) - 6)
+          .attr("text-anchor", "middle")
+          .attr("fill", "#52514e").attr("font-size", 10)
+          .text(pt.kg >= 100 ? Math.round(pt.kg) : pt.kg.toFixed(1));
+      }
+    });
+  });
+
+  // X axis
+  const xAxis = d3.axisBottom(x).tickFormat(d3.format("d")).ticks(11);
+  svg.append("g")
+    .attr("transform", `translate(0,${SPARSE.length * rowH})`)
+    .call(xAxis)
+    .call(g => g.select(".domain").attr("stroke", "#c3c2b7"))
+    .call(g => g.selectAll(".tick line").attr("stroke", "#e1e0d9"))
+    .call(g => g.selectAll(".tick text").attr("fill", "#898781").attr("font-size", 11));
+
+  // Hover targets
+  const tooltip = d3.select("#dot-tooltip");
+  SPARSE.forEach((prod, i) => {
+    const cy = i * rowH + rowH / 2;
+    prod.pts.forEach(pt => {
+      const hr = Math.max(r(pt.kg) + 6, 14);
+      svg.append("circle")
+        .attr("cx", x(pt.year)).attr("cy", cy).attr("r", hr)
+        .attr("fill", "transparent")
+        .on("mouseenter", function(ev) {
+          let html = `<div class="tt-year">${prod.product} · ${pt.year}</div>`;
+          html += `<div class="tt-item"><span class="tt-name">Converted</span><span class="tt-val">${pt.kg.toLocaleString(undefined,{maximumFractionDigits:2})}<span class="tt-unit">kg</span></span></div>`;
+          html += `<div class="tt-item"><span class="tt-name">Original</span><span class="tt-val">${pt.orig.toLocaleString(undefined,{maximumFractionDigits:2})}<span class="tt-unit">${prod.unit}</span></span></div>`;
+          tooltip.style("opacity", 1).html(html);
+          positionTooltip(ev, tooltip, "dots-wrap");
+        })
+        .on("mousemove", function(ev) { positionTooltip(ev, tooltip, "dots-wrap"); })
+        .on("mouseleave", function() { tooltip.style("opacity", 0); });
+    });
+  });
+
+  // Legend
+  legendEl.innerHTML = "";
+  SPARSE.forEach(d => {
+    const years = d.pts.map(p => p.year).join(", ");
+    const item = document.createElement("span");
+    item.className = "legend-item sparse";
+    item.innerHTML = `<span class="legend-swatch" style="background:${SPARSE_COLOR}"></span>${d.product} <span style="color:#898781">(${years})</span>`;
+    legendEl.appendChild(item);
+  });
+}
+
+// ── HELPERS ───────────────────────────────────────
+function positionTooltip(ev, el, wrapId) {
+  const wrap = document.getElementById(wrapId || "streamgraph-wrap");
+  const rect = wrap.getBoundingClientRect();
+  const x = ev.clientX - rect.left + 14;
+  const y = ev.clientY - rect.top - 10;
+  el.style("left", x + "px").style("top", y + "px");
+}
+
+// ── RENDER ────────────────────────────────────────
+function render() {
+  buildStreamgraph();
+  buildDots();
+}
+
+document.getElementById("btn-absolute").addEventListener("click", function() {
+  if (mode === "absolute") return;
+  mode = "absolute";
+  this.classList.add("active");
+  document.getElementById("btn-percent").classList.remove("active");
+  buildStreamgraph();
+});
+
+document.getElementById("btn-percent").addEventListener("click", function() {
+  if (mode === "percent") return;
+  mode = "percent";
+  this.classList.add("active");
+  document.getElementById("btn-absolute").classList.remove("active");
+  buildStreamgraph();
+});
+
+window.addEventListener("resize", () => {
+  buildStreamgraph();
+  buildDots();
+});
+
+render();
+</script>
+</body>
+</html>
