@@ -127,8 +127,8 @@
 
 <header>
   <div>
-    <h1>TCM Animal Products Exported to Hong Kong</h1>
-    <div class="subtitle">Traditional Chinese Medicine · 1953–1963 · All values converted to kg</div>
+    <h1>TCM Animal Products Exported from Tianjin to Hong Kong</h1>
+    <div class="subtitle">Port of Tianjin · 1953–1963 · All values converted to kg</div>
   </div>
   <div class="controls">
     <button id="btn-absolute" class="active">Absolute (kg)</button>
@@ -144,6 +144,7 @@
     <div class="tooltip" id="sg-tooltip"></div>
   </div>
   <div class="legend" id="streamgraph-legend"></div>
+  <div class="dragon-note" style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5;">* <em>Dragon bones</em> are generally mammal fossils, petrified wood, or even oracle bones. (Source: Wikipedia)</div>
 </div>
 
 <div class="chart-section">
@@ -158,7 +159,7 @@
 
 <div class="note">
   <strong>Unit conversions:</strong> 1 tael (两) = 0.0378 kg &nbsp;|&nbsp; 1 ton (吨) = 1,000 kg.<br>
-  <strong>Data source:</strong> Export records to Hong Kong, 1953–1963. Products with units: Musk &amp; Deer Antler Velvet in taels; Dragon Bone, Donkey-hide Gelatin &amp; Goat Blood in tons; all others in kg.
+  <strong>Data source:</strong> Hebei Province Port of Tianjin foreign trade documents (export), 1953–1963.
 </div>
 
 </div>
@@ -215,6 +216,14 @@ const SPARSE = SPARSE_RAW.map(d => ({
 // ── COLORS ────────────────────────────────────────
 const COLORS = ["#2a78d6","#eb6834","#1baf7a","#eda100","#e87ba4","#008300","#4a3aa7"];
 const SPARSE_COLOR = "#787570";
+
+// Chinese name mapping
+const ZH = {
+  "Musk": "麝香", "Deer Antler Velvet": "鹿茸", "Deer Antler Horn": "鹿角",
+  "Deer Tail": "鹿尾", "Deer Sinew": "鹿筋", "Dragon Bone": "龙骨",
+  "Donkey-hide Gelatin": "阿胶", "Antelope Horn": "羚羊角", "Antelope Bone": "羚羊骨",
+  "Bear Paw": "熊掌", "Musk Skin": "麝香皮", "Goat Blood": "山羊血", "Deer Penis": "鹿鞭"
+};
 
 // ── STREAMGRAPH ───────────────────────────────────
 let mode = "absolute"; // "absolute" | "percent"
@@ -353,7 +362,8 @@ function buildStreamgraph() {
   MAJOR.forEach((d, i) => {
     const item = document.createElement("span");
     item.className = "legend-item";
-    item.innerHTML = `<span class="legend-swatch" style="background:${COLORS[i]}"></span>${d.product}`;
+    const zh = ZH[d.product] || "";
+    item.innerHTML = `<span class="legend-swatch" style="background:${COLORS[i]}"></span>${d.product} <span style="color:#898781;font-size:11px">${zh}</span>`;
     legendEl.appendChild(item);
   });
 }
@@ -380,7 +390,7 @@ function buildDots() {
 
   // Radius scale (same for all sparse products, based on kg)
   const allVals = SPARSE.flatMap(d => d.pts.map(p => p.kg));
-  const r = d3.scaleSqrt().domain([0, d3.max(allVals) || 1]).range([3, 14]);
+  const r = d3.scaleSqrt().domain([0, d3.max(allVals) || 1]).range([4.5, 14]);
 
   // Row lines
   SPARSE.forEach((d, i) => {
@@ -417,8 +427,8 @@ function buildDots() {
         .attr("stroke", "#fff")
         .attr("stroke-width", 1.5);
 
-      // Direct label for larger dots
-      if (pt.kg > 10) {
+      // Direct label for all non-zero dots
+      if (pt.kg >= 1) {
         g.append("text")
           .attr("x", x(pt.year)).attr("y", cy - r(pt.kg) - 6)
           .attr("text-anchor", "middle")
@@ -462,9 +472,10 @@ function buildDots() {
   legendEl.innerHTML = "";
   SPARSE.forEach(d => {
     const years = d.pts.map(p => p.year).join(", ");
+    const zh = ZH[d.product] || "";
     const item = document.createElement("span");
     item.className = "legend-item sparse";
-    item.innerHTML = `<span class="legend-swatch" style="background:${SPARSE_COLOR}"></span>${d.product} <span style="color:#898781">(${years})</span>`;
+    item.innerHTML = `<span class="legend-swatch" style="background:${SPARSE_COLOR}"></span>${d.product} <span style="color:#898781;font-size:11px">${zh}</span> <span style="color:#b8b5ad">(${years})</span>`;
     legendEl.appendChild(item);
   });
 }
